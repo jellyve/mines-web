@@ -1,4 +1,5 @@
 var hexlist = [];
+var inactive = false;
 
 class Hex {
     isMine=false;
@@ -14,37 +15,42 @@ class Hex {
         this.index=iIndex*1;
     }
 }
+
+// called by new game button
 function clearMines(){
-    // console.log("clear");
-    // TODO : delete field
+
+    //  delete field
     document.getElementById("field").innerHTML='';
     hexlist = [];
+    inactive = false;
+    
+    // set up the field again
     createField();
 }
+
 function createField(){
-    // console.log("create");
+
+    // get the height, width, mines input
     var heightForm = document.getElementById('iHeight').value;
-    // console.log("height = "+heightForm);
     var widthForm = document.getElementById('iWidth').value;
-    // console.log(widthForm);
     var minesForm = document.getElementById('iMines').value;
-    // console.log(minesForm);
     
+    // get the hmtl tag of the field
     var fieldtag = document.getElementById("field");
     var idx=0;
+    
+    // add rows to field (based on height)
     for(var y=heightForm; y>=-heightForm; y--){
-        // console.log("y = "+y);
         fieldtag.innerHTML+='<div class="fieldRow"></div>'
+        // add mines to field (based on width)
         for(var x=0; x<(widthForm-Math.abs(y)); x++){
-            // console.log("y = "+y+" x = "+x);
-            // create hex html
-            // create hex object and add to list
             idx=hexlist.length+1;
+            // create hex object and add to list
             hexlist.push(new Hex(x+Math.max(0,y*1),y*1+heightForm*1,idx));
-            fieldtag.children[fieldtag.children.length-1].innerHTML+='<span class="hex" onclick="window.click('+idx+')"><span class="text" id='+idx+'>&nbsp;</span></span> ';
-            // fieldtag.children[fieldtag.children.length-1].innerHTML+='<span class="hex" onclick="click()"><span class="text" id='+idx+'>1</span></span> ';
+            // create hex html
+            fieldtag.children[fieldtag.children.length-1].innerHTML+=
+            '<span class="hex" onclick="window.click('+idx+')" oncontextmenu="javascript:window.flag('+idx+');return false;"><span class="text" id='+idx+'>&nbsp;</span></span> ';
         }
-        // document.getElementById("field").innerHTML+='</div>'
     }
 
     // calculate adjacent, checks from top left to top right then down
@@ -56,7 +62,7 @@ function createField(){
                     hexlist[i].adjacent.push(hexlist[j]);
                     hexlist[j].adjacent.push(hexlist[i]);
                 }
-                // row below
+            // row below
             } else if(hexlist[i].yloc-hexlist[j].yloc==1){
                 if(hexlist[i].xloc==hexlist[j].xloc){
                     hexlist[i].adjacent.push(hexlist[j]);
@@ -70,10 +76,12 @@ function createField(){
         }
     }
     
+    // set a (randomly selected) subset of elements to be mines
     var numMines = minesForm;
     var randomNum = 0;
     var numObjects = hexlist.length;
 
+    // loop through all hexes, making the probability that each one is a mine based on how many mines are left to place and how many hexes are left
     for (var i = 0; i < hexlist.length; i++)
     {
         randomNum = getRandomInt(0,numObjects)+1;
@@ -87,55 +95,106 @@ function createField(){
     }
 }
 
+// helper function for randomly setting mines
 function getRandomInt(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
-  }
+}
 
-
+// call the field creation on page load
 createField();
 
-// function click(pointer){
-//     cHex=hexlist[pointer-1];
-//     console.log("checking "+cHex.xloc+", "+cHex.yloc);
-// }
+// what to do if a hex is clicked, call the flood fill (which then calls itself when you click on a zero)
 function click(pointer){
-    cHex=hexlist[pointer-1];
-    // console.log("checking "+cHex.index+", "+cHex.xloc+", "+cHex.yloc);
-    // document.getElementById(pointer).innerText=hexlist[pointer-1].adjacent.length;
-    
-    if(!cHex.visited){
-        // console.log(cHex.isMine);
-        cHex.visited=true;
-        if(cHex.isMine){
-            // console.log(cHex.adjacent);
-            mineClicked();
-            // console.log("clickeda mine");
-        } else {
-            minesAdjacent=0;
-            cHex.adjacent.forEach(element => {
-                if(element.isMine){
-                    minesAdjacent++;
-                    // console.log("mine "+element.isMine+" at "+element.xloc+", "+element.yloc);
+
+    // if you haven't won or lost yet
+    if(!inactive){
+
+        floodfill(pointer);
+
+        // check if you've won
+        var win = true;
+
+        hexlist.forEach(element => {
+            if(!element.isMine && !element.visited){
+                win = false;
+            }
+        });
+        if(win){
+            window.alert("You won!")
+            inactive=true;
+        }
+    }
+}
+
+function flag(pointer){
+    if(!inactive){
+        // select the hex that was 'clicked'
+        cHex=hexlist[pointer-1];
+        if(!cHex.visited){
+            cHex.flagged=true;
+            document.getElementById(pointer).innerText="F";
+            
+            // check if you've won
+            var win = true;
+            
+            hexlist.forEach(element => {
+                if(element.isMine!=element.flagged){
+                    win = false;
                 }
             });
-            document.getElementById(pointer).innerText=minesAdjacent;
-            // console.log("there were "+minesAdjacent+" mines adjacent");
-            if(minesAdjacent==0){
-                cHex.adjacent.forEach(element => {
-                    click(element.index);
-                });
+            if(win){
+                window.alert("You won!")
+                inactive=true;
             }
         }
     }
 }
 
-function mineClicked(){
-    hexlist.forEach(element => {
-        if(element.isMine){
-            document.getElementById((element.index)).innerText='m';
+function floodfill(pointer){
+    
+    // select the hex that was 'clicked'
+    cHex=hexlist[pointer-1];
+    
+    // don't do anything if it has already been revealed
+    if(!cHex.visited){
+        cHex.visited=true;
+        cHex.flagged=false;
+
+        // check if it's a mine
+        if(cHex.isMine){
+
+            // if it is, reveal all mines
+            hexlist.forEach(element => {
+                if(element.isMine){
+                    document.getElementById((element.index)).innerText='m';
+                }
+            });
+
+            inactive=true;
+
+        } else {
+
+            // if it's not a mine, how many mines are adjacent
+            minesAdjacent=0;
+            cHex.adjacent.forEach(element => {
+                if(element.isMine){
+                    minesAdjacent++;
+                }
+            });
+
+            // change the tile
+            document.getElementById(pointer).innerText=minesAdjacent;
+            document.getElementById(pointer).classList.add("mines"+minesAdjacent);
+            
+            // if the tile was a zero, call a 'click' on all surrounding tiles
+            if(minesAdjacent==0){
+                cHex.adjacent.forEach(element => {
+                    floodfill(element.index);
+                });
+            }
         }
-    });
+    }
 }
 

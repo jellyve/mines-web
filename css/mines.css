@@ -15,12 +15,16 @@
 }
 
 .field{
-    background-color: var(--customdarkgrey);
+    background-color: lightslategray;
     display: block;
     margin: auto;
-    padding: calc(13px * var(--sidelength) / 40);
+    padding: 20px;
     width: fit-content;
     text-align: center;
+    -webkit-user-select: none; /* Safari */        
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+/Edge */
+    user-select: none; /* Standard */
 }
 
 .text{
@@ -45,6 +49,28 @@
     0px
     ;
     cursor: pointer;
+}
+
+.mines0{
+    color:rgba(0, 0, 0, 0.2);
+}
+.mines1{
+    color: red;
+}
+.mines2{
+    color: blueviolet;
+}
+.mines3{
+    color: blue;
+}
+.mines4{
+    color: green;
+}
+.mines5{
+    color: orange;
+}
+.mines6{
+    color: hotpink;
 }
 
 .hex:before, .hex:after {
